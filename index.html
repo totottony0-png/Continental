@@ -132,8 +132,19 @@
             width: 100%; height: 120px; object-fit: contain; margin-bottom: 8px;
             filter: brightness(1.02);
         }
-        .product-card h3 { color: var(--text-main); margin-bottom: 4px; font-size: 0.95rem; line-height: 1.3; }
-        .product-card div { color: var(--text-sec); font-size: 0.75rem; margin-bottom: 8px; }
+        .product-card h3 { color: var(--text-main); margin-bottom: 2px; font-size: 0.95rem; line-height: 1.3; }
+        
+        /* Product Description Style */
+        .product-desc {
+            color: var(--text-sec);
+            font-size: 0.75rem; /* Small font */
+            margin-bottom: 6px;
+            opacity: 0.8; /* Light/Faint look */
+            line-height: 1.2;
+            min-height: 15px;
+        }
+
+        .product-card .cat-tag { color: var(--primary); font-size: 0.7rem; margin-bottom: 8px; font-weight: bold; }
         
         /* Action Buttons Area on Card */
         .card-actions {
@@ -400,6 +411,7 @@
 
         db.ref('categories').on('value', snap => {
             const data = snap.val();
+            // Data in firebase might be object {key: name} or array. We handle values.
             const cats = data ? Object.values(data) : [];
             renderCategories(cats);
         });
@@ -460,10 +472,12 @@
                     `;
                 }
 
+                // Added product-desc below name
                 div.innerHTML = `
                     <img src="${p.image}" class="product-img">
-                    <h3 style="font-size:1.1rem;">${p.name}</h3>
-                    <div style="font-size:0.8rem; margin-bottom:15px">${p.category}</div>
+                    <h3>${p.name}</h3>
+                    <div class="product-desc">${p.description || ''}</div>
+                    <div class="cat-tag">${p.category}</div>
                     ${actionHTML}
                 `;
                 container.appendChild(div);
@@ -580,9 +594,4 @@
 
         window.onclick = function(e) {
             if(!e.target.closest('.lang-dropdown')) {
-                document.getElementById('lang-menu').classList.remove('show');
-            }
-        }
-    </script>
-</body>
-</html>
+                document.getElementById('lang
