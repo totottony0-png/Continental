@@ -96,6 +96,28 @@
         /* Grid System */
         .container { padding: 15px 4%; width: 100%; max-width: 1400px; margin: 0 auto; }
         
+        /* --- SEARCH BAR STYLES --- */
+        .search-wrapper {
+            position: relative; margin-bottom: 15px; width: 100%;
+        }
+        .search-input {
+            width: 100%;
+            padding: 12px 12px 12px 45px; /* Space for icon */
+            border-radius: 25px;
+            border: 1px solid var(--border-color);
+            background: var(--glass-bg);
+            backdrop-filter: blur(5px);
+            color: var(--text-main);
+            outline: none;
+            box-shadow: var(--shadow);
+            font-size: 1rem;
+        }
+        .search-icon {
+            position: absolute; left: 18px; top: 50%; transform: translateY(-50%);
+            color: var(--text-sec); font-size: 1.1rem;
+        }
+        /* ------------------------ */
+
         .filters { 
             display: flex; gap: 8px; overflow-x: auto; padding-bottom: 10px; margin-bottom: 15px; 
             scrollbar-width: none; -ms-overflow-style: none;
@@ -130,16 +152,10 @@
         }
         .product-card h3 { color: var(--text-main); margin-bottom: 2px; font-size: 0.95rem; line-height: 1.3; }
         
-        /* --- New Description Style --- */
         .product-desc {
-            color: var(--text-sec);
-            font-size: 0.75rem; 
-            margin-bottom: 6px;
-            opacity: 0.8;
-            line-height: 1.2;
-            min-height: 15px;
+            color: var(--text-sec); font-size: 0.75rem; margin-bottom: 6px;
+            opacity: 0.8; line-height: 1.2; min-height: 15px;
         }
-        /* --------------------------- */
 
         .product-card div.cat-tag { color: var(--primary); font-size: 0.7rem; margin-bottom: 8px; font-weight: bold; }
         
@@ -283,6 +299,11 @@
     </nav>
 
     <div class="container">
+        <div class="search-wrapper">
+            <i class="fa-solid fa-search search-icon"></i>
+            <input type="text" id="search-input" class="search-input" placeholder="Search products..." oninput="handleSearch(this.value)">
+        </div>
+
         <div class="filters" id="categories-container"></div>
         <div class="products-grid" id="products-container"></div>
     </div>
@@ -352,20 +373,22 @@
             setTimeout(() => { overlay.style.display = 'none'; }, 1500);
         }
 
+        // Updated Dictionary with search placeholder
         const dictionary = {
-            ar: { app_title: "Continental", cart_title: "سلة المشتريات", add_cart: "أضف", added: "تمت", confirm_order: "تأكيد الطلب", processing: "جاري الطلب...", room_ph: "رقم الغرفة", name_ph: "اسم العميل", empty_cart: "السلة فارغة", all: "الكل", success: "تم بنجاح" },
-            en: { app_title: "Continental", cart_title: "My Cart", add_cart: "Add", added: "Added", confirm_order: "Confirm Order", processing: "Processing...", room_ph: "Room Number", name_ph: "Client Name", empty_cart: "Cart is empty", all: "All", success: "Success" },
-            ru: { app_title: "Continental", cart_title: "Корзина", add_cart: "Добавить", added: "Добавлено", confirm_order: "Подтвердить", processing: "Обработка...", room_ph: "Номер комнаты", name_ph: "Имя клиента", empty_cart: "Пусто", all: "Все", success: "Успех" },
-            uk: { app_title: "Continental", cart_title: "Кошик", add_cart: "Додати", added: "Додано", confirm_order: "Підтвердити", processing: "Обробка...", room_ph: "Номер кімнати", name_ph: "Ім'я клієнта", empty_cart: "Порожньо", all: "Всі", success: "Успіх" },
-            de: { app_title: "Continental", cart_title: "Warenkorb", add_cart: "Hinzufügen", added: "Hinzugefügt", confirm_order: "Bestätigen", processing: "Wird bearbeitet...", room_ph: "Zimmernummer", name_ph: "Kundenname", empty_cart: "Leer", all: "Alle", success: "Erfolg" },
-            fr: { app_title: "Continental", cart_title: "Panier", add_cart: "Ajouter", added: "Ajouté", confirm_order: "Confirmer", processing: "Traitement...", room_ph: "Numéro de chambre", name_ph: "Nom du client", empty_cart: "Vide", all: "Tout", success: "Succès" },
-            es: { app_title: "Continental", cart_title: "Carrito", add_cart: "Añadir", added: "Añadido", confirm_order: "Confirmar", processing: "Procesando...", room_ph: "Número de habitación", name_ph: "Nombre del cliente", empty_cart: "Vacío", all: "Todos", success: "Éxito" }
+            ar: { app_title: "Continental", cart_title: "سلة المشتريات", add_cart: "أضف", added: "تمت", confirm_order: "تأكيد الطلب", processing: "جاري الطلب...", room_ph: "رقم الغرفة", name_ph: "اسم العميل", empty_cart: "السلة فارغة", all: "الكل", success: "تم بنجاح", search_ph: "بحث عن منتج..." },
+            en: { app_title: "Continental", cart_title: "My Cart", add_cart: "Add", added: "Added", confirm_order: "Confirm Order", processing: "Processing...", room_ph: "Room Number", name_ph: "Client Name", empty_cart: "Cart is empty", all: "All", success: "Success", search_ph: "Search products..." },
+            ru: { app_title: "Continental", cart_title: "Корзина", add_cart: "Добавить", added: "Добавлено", confirm_order: "Подтвердить", processing: "Обработка...", room_ph: "Номер комнаты", name_ph: "Имя клиента", empty_cart: "Пусто", all: "Все", success: "Успех", search_ph: "Поиск продуктов..." },
+            uk: { app_title: "Continental", cart_title: "Кошик", add_cart: "Додати", added: "Додано", confirm_order: "Підтвердити", processing: "Обробка...", room_ph: "Номер кімнати", name_ph: "Ім'я клієнта", empty_cart: "Порожньо", all: "Всі", success: "Успіх", search_ph: "Пошук продуктів..." },
+            de: { app_title: "Continental", cart_title: "Warenkorb", add_cart: "Hinzufügen", added: "Hinzugefügt", confirm_order: "Bestätigen", processing: "Wird bearbeitet...", room_ph: "Zimmernummer", name_ph: "Kundenname", empty_cart: "Leer", all: "Alle", success: "Erfolg", search_ph: "Produkte suchen..." },
+            fr: { app_title: "Continental", cart_title: "Panier", add_cart: "Ajouter", added: "Ajouté", confirm_order: "Confirmer", processing: "Traitement...", room_ph: "Numéro de chambre", name_ph: "Nom du client", empty_cart: "Vide", all: "Tout", success: "Succès", search_ph: "Rechercher..." },
+            es: { app_title: "Continental", cart_title: "Carrito", add_cart: "Añadir", added: "Añadido", confirm_order: "Confirmar", processing: "Procesando...", room_ph: "Número de habitación", name_ph: "Nombre del cliente", empty_cart: "Vacío", all: "Todos", success: "Éxito", search_ph: "Buscar productos..." }
         };
         
         let currentLang = 'en';
         let products = [];
         let cart = [];
         let activeCategory = 'all';
+        let searchQuery = ''; // New state for search
 
         function toggleLangMenu() { document.getElementById('lang-menu').classList.toggle('show'); }
 
@@ -383,6 +406,8 @@
             document.getElementById('room-num').placeholder = dictionary[code].room_ph;
             document.getElementById('client-name').placeholder = dictionary[code].name_ph;
             document.getElementById('success-msg').innerText = dictionary[code].success;
+            // Update search placeholder
+            document.getElementById('search-input').placeholder = dictionary[code].search_ph;
 
             renderProducts(); renderCategories(); renderCart(); 
         }
@@ -418,11 +443,23 @@
             renderProducts();
         }
 
+        // New Search Handler
+        function handleSearch(val) {
+            searchQuery = val.toLowerCase();
+            renderProducts();
+        }
+
         function renderProducts() {
             const container = document.getElementById('products-container');
             container.innerHTML = '';
             
-            const filtered = activeCategory === 'all' ? products : products.filter(p => p.category === activeCategory);
+            // Step 1: Filter by Category
+            let filtered = activeCategory === 'all' ? products : products.filter(p => p.category === activeCategory);
+
+            // Step 2: Filter by Search (if exists)
+            if(searchQuery) {
+                filtered = filtered.filter(p => p.name.toLowerCase().includes(searchQuery));
+            }
 
             filtered.forEach(p => {
                 const div = document.createElement('div');
@@ -451,7 +488,6 @@
                     `;
                 }
 
-                // *** Added Description Here ***
                 div.innerHTML = `
                     <img src="${p.image}" class="product-img">
                     <h3>${p.name}</h3>
@@ -461,6 +497,11 @@
                 `;
                 container.appendChild(div);
             });
+
+            // Show message if no products found
+            if(filtered.length === 0 && products.length > 0) {
+                container.innerHTML = '<p style="text-align:center; width:100%; grid-column:1/-1; color:var(--text-sec); padding:20px;">No products found</p>';
+            }
         }
 
         function addToCart(id) {
