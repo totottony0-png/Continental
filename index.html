@@ -492,6 +492,9 @@
                     <img src="${p.image}" class="product-img">
                     <h3>${p.name}</h3>
                     <div class="product-desc">${p.description || ''}</div>
+                    <div style="font-weight:bold; color:var(--primary); margin-bottom:5px; font-size:1.1rem;">
+                        ${p.price || ''} <span style="font-size:0.85rem">${p.currency || ''}</span>
+                    </div>
                     <div class="cat-tag">${p.category}</div>
                     ${actionHTML}
                 `;
@@ -554,6 +557,9 @@
                         <img src="${item.image}" class="cart-item-img">
                         <div style="flex:1">
                             <div style="font-weight:bold; color:var(--text-main); font-size:0.95rem;">${item.name}</div>
+                            <div style="color:var(--primary); font-weight:bold; font-size:0.85rem; margin-top:2px;">
+                                ${item.price || ''} ${item.currency || ''}
+                            </div>
                             <div class="qty-controls" style="display:flex; align-items:center; gap:10px; margin-top:5px; background:var(--input-bg); border:1px solid var(--border-color); padding:2px 8px; border-radius:15px; width:fit-content;">
                                 <button onclick="updateQty('${item.id}', -1)" style="border:none; background:none; color:var(--text-main); font-weight:bold; cursor:pointer;">-</button>
                                 <span style="font-weight:bold; font-size:0.9rem;">${item.qty}</span>
