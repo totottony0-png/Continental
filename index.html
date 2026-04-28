@@ -349,24 +349,32 @@
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
 
-        // Load Cache initially
-        let products = JSON.parse(localStorage.getItem('cachedProducts')) || [];
-        let loadedCats = JSON.parse(localStorage.getItem('cachedCats')) || [];
-        let isDataLoaded = false;
+        // Load Cache initially - with safety check
+        let products = [];
+        let loadedCats = [];
+        let cart = [];
         
+        try { products = JSON.parse(localStorage.getItem('cachedProducts')) || []; } catch(e){}
+        try { loadedCats = JSON.parse(localStorage.getItem('cachedCats')) || []; } catch(e){}
+        try { cart = JSON.parse(localStorage.getItem('cachedCart')) || []; } catch(e){}
+
+        if(!Array.isArray(products)) products = [];
+        if(!Array.isArray(loadedCats)) loadedCats = [];
+
+        let isDataLoaded = false;
         let currentLang = localStorage.getItem('lang') || 'en';
-        let cart = JSON.parse(localStorage.getItem('cachedCart')) || [];
         let activeCategory = 'all';
         let searchQuery = ''; 
 
+        // Dictionary updated with empty_state translations
         const dictionary = {
-            ar: { app_title: "Continental", cart_title: "سلة المشتريات", add_cart: "أضف", added: "تمت", confirm_order: "تأكيد الطلب", processing: "جاري الطلب...", room_ph: "رقم الغرفة", name_ph: "اسم العميل", empty_cart: "السلة فارغة", all: "الكل", success: "تم بنجاح", search_ph: "بحث عن منتج...", payment_info: "يمكن دفع حساب الفاتورة بالفيزا أو كاش نقداً بالمحل \"GEF المكملات الغذائية\" المتواجد بداخل الفندق بجوار حمام السباحة", contact_whatsapp: "للتواصل واتساب" },
-            en: { app_title: "Continental", cart_title: "My Cart", add_cart: "Add", added: "Added", confirm_order: "Confirm Order", processing: "Processing...", room_ph: "Room Number", name_ph: "Client Name", empty_cart: "Cart is empty", all: "All", success: "Success", search_ph: "Search products...", payment_info: "The bill can be paid by Visa or cash at the \"GEF Nutritional Supplements\" shop located inside the hotel next to the swimming pool.", contact_whatsapp: "Contact on WhatsApp" },
-            ru: { app_title: "Continental", cart_title: "Корзина", add_cart: "Добавить", added: "Добавлено", confirm_order: "Подтвердить", processing: "Обработка...", room_ph: "Номер комнаты", name_ph: "Имя клиента", empty_cart: "Пусто", all: "Все", success: "Успех", search_ph: "Поиск продуктов...", payment_info: "Счет можно оплатить картой Visa или наличными в магазине «GEF Nutritional Supplements», расположенном в отеле рядом с бассейном.", contact_whatsapp: "Связаться в WhatsApp" },
-            uk: { app_title: "Continental", cart_title: "Кошик", add_cart: "Додати", added: "Додано", confirm_order: "Підтвердити", processing: "Обробка...", room_ph: "Номер кімнати", name_ph: "Ім'я клієнта", empty_cart: "Порожньо", all: "Всі", success: "Успіх", search_ph: "Пошук продуктів...", payment_info: "Рахунок можна оплатити картою Visa або готівкою в магазині «GEF Nutritional Supplements», що знаходиться в готелі поруч із басейном.", contact_whatsapp: "Зв'язатися у WhatsApp" },
-            de: { app_title: "Continental", cart_title: "Warenkorb", add_cart: "Hinzufügen", added: "Hinzugefügt", confirm_order: "Bestätigen", processing: "Wird bearbeitet...", room_ph: "Zimmernummer", name_ph: "Kundenname", empty_cart: "Leer", all: "Alle", success: "Erfolg", search_ph: "Produkte suchen...", payment_info: "Die Rechnung kann mit Visa oder bar im Geschäft „GEF Nutritional Supplements“ im Hotel neben dem Schwimmbad bezahlt werden.", contact_whatsapp: "Kontakt über WhatsApp" },
-            fr: { app_title: "Continental", cart_title: "Panier", add_cart: "Ajouter", added: "Ajouté", confirm_order: "Confirmer", processing: "Traitement...", room_ph: "Numéro de chambre", name_ph: "Nom du client", empty_cart: "Vide", all: "Tout", success: "Succès", search_ph: "Rechercher...", payment_info: "La facture peut être payée par Visa ou en espèces dans la boutique « GEF Nutritional Supplements » située à l'intérieur de l'hôtel à côté de la piscine.", contact_whatsapp: "Contacter sur WhatsApp" },
-            es: { app_title: "Continental", cart_title: "Carrito", add_cart: "Añadir", added: "Añadido", confirm_order: "Confirmar", processing: "Procesando...", room_ph: "Número de habitación", name_ph: "Nombre del cliente", empty_cart: "Vacío", all: "Todos", success: "Éxito", search_ph: "Buscar productos...", payment_info: "La factura se puede pagar con Visa o en efectivo en la tienda \"GEF Nutritional Supplements\" ubicada dentro del hotel junto a la piscina.", contact_whatsapp: "Contactar por WhatsApp" }
+            ar: { app_title: "Continental", cart_title: "سلة المشتريات", add_cart: "أضف", added: "تمت", confirm_order: "تأكيد الطلب", processing: "جاري الطلب...", room_ph: "رقم الغرفة", name_ph: "اسم العميل", empty_cart: "السلة فارغة", all: "الكل", success: "تم بنجاح", search_ph: "بحث عن منتج...", payment_info: "يمكن دفع حساب الفاتورة بالفيزا أو كاش نقداً بالمحل \"GEF المكملات الغذائية\" المتواجد بداخل الفندق بجوار حمام السباحة", contact_whatsapp: "للتواصل واتساب", empty_state: "لا توجد منتجات متاحة" },
+            en: { app_title: "Continental", cart_title: "My Cart", add_cart: "Add", added: "Added", confirm_order: "Confirm Order", processing: "Processing...", room_ph: "Room Number", name_ph: "Client Name", empty_cart: "Cart is empty", all: "All", success: "Success", search_ph: "Search products...", payment_info: "The bill can be paid by Visa or cash at the \"GEF Nutritional Supplements\" shop located inside the hotel next to the swimming pool.", contact_whatsapp: "Contact on WhatsApp", empty_state: "No products found" },
+            ru: { app_title: "Continental", cart_title: "Корзина", add_cart: "Добавить", added: "Добавлено", confirm_order: "Подтвердить", processing: "Обработка...", room_ph: "Номер комнаты", name_ph: "Имя клиента", empty_cart: "Пусто", all: "Все", success: "Успех", search_ph: "Поиск продуктов...", payment_info: "Счет можно оплатить картой Visa или наличными в магазине «GEF Nutritional Supplements», расположенном в отеле рядом с бассейном.", contact_whatsapp: "Связаться в WhatsApp", empty_state: "Продукты не найдены" },
+            uk: { app_title: "Continental", cart_title: "Кошик", add_cart: "Додати", added: "Додано", confirm_order: "Підтвердити", processing: "Обробка...", room_ph: "Номер кімнати", name_ph: "Ім'я клієнта", empty_cart: "Порожньо", all: "Всі", success: "Успіх", search_ph: "Пошук продуктів...", payment_info: "Рахунок можна оплатити картою Visa або готівкою в магазині «GEF Nutritional Supplements», що знаходиться в готелі поруч із басейном.", contact_whatsapp: "Зв'язатися у WhatsApp", empty_state: "Продукти не знайдені" },
+            de: { app_title: "Continental", cart_title: "Warenkorb", add_cart: "Hinzufügen", added: "Hinzugefügt", confirm_order: "Bestätigen", processing: "Wird bearbeitet...", room_ph: "Zimmernummer", name_ph: "Kundenname", empty_cart: "Leer", all: "Alle", success: "Erfolg", search_ph: "Produkte suchen...", payment_info: "Die Rechnung kann mit Visa oder bar im Geschäft „GEF Nutritional Supplements“ im Hotel neben dem Schwimmbad bezahlt werden.", contact_whatsapp: "Kontakt über WhatsApp", empty_state: "Keine Produkte gefunden" },
+            fr: { app_title: "Continental", cart_title: "Panier", add_cart: "Ajouter", added: "Ajouté", confirm_order: "Confirmer", processing: "Traitement...", room_ph: "Numéro de chambre", name_ph: "Nom du client", empty_cart: "Vide", all: "Tout", success: "Succès", search_ph: "Rechercher...", payment_info: "La facture peut être payée par Visa ou en espèces dans la boutique « GEF Nutritional Supplements » située à l'intérieur de l'hôtel à côté de la piscine.", contact_whatsapp: "Contacter sur WhatsApp", empty_state: "Aucun produit trouvé" },
+            es: { app_title: "Continental", cart_title: "Carrito", add_cart: "Añadir", added: "Añadido", confirm_order: "Confirmar", processing: "Procesando...", room_ph: "Número de habitación", name_ph: "Nombre del cliente", empty_cart: "Vacío", all: "Todos", success: "Éxito", search_ph: "Buscar productos...", payment_info: "La factura se puede pagar con Visa o en efectivo en la tienda \"GEF Nutritional Supplements\" ubicada dentro del hotel junto a la piscina.", contact_whatsapp: "Contactar por WhatsApp", empty_state: "No se encontraron productos" }
         };
 
         function toggleTheme() {
@@ -383,17 +391,27 @@
                 document.getElementById('theme-icon').className = 'fa-solid fa-sun';
             }
             
-            // Apply saved lang
             const flags = {en:'us.png', ar:'eg.png', ru:'ru.png', uk:'ua.png', de:'de.png', fr:'fr.png', es:'es.png'};
             const names = {en:'English', ar:'عربي', ru:'Русский', uk:'Українська', de:'Deutsch', fr:'Français', es:'Español'};
             setLang(currentLang, `https://flagcdn.com/w40/${flags[currentLang]}`, names[currentLang], true);
 
-            // Render Cache immediately or show skeleton
-            if(products.length > 0) renderProducts();
-            else renderSkeleton();
+            // Show skeleton ONLY if cache is completely empty
+            if(products.length > 0) {
+                renderProducts();
+            } else {
+                renderSkeleton();
+            }
 
             if(loadedCats.length > 0) renderCategories(loadedCats);
             updateCartUI();
+
+            // Safety Timeout: if Firebase takes more than 4 seconds to load (or is blocked), kill skeleton
+            setTimeout(() => {
+                if (!isDataLoaded) {
+                    isDataLoaded = true; // force data state
+                    renderProducts(); // will show 'no products' if still empty
+                }
+            }, 4000);
         });
 
         function showSuccess(msg) {
@@ -441,19 +459,23 @@
             }
         }
 
-        // Firebase Listeners
+        // Firebase Listeners - Added error callbacks to prevent infinite loading
         db.ref('products').on('value', snap => {
             isDataLoaded = true;
             const data = snap.val();
             products = data ? Object.keys(data).map(k => ({id:k, ...data[k]})) : [];
-            localStorage.setItem('cachedProducts', JSON.stringify(products)); // Cache data
+            localStorage.setItem('cachedProducts', JSON.stringify(products)); 
+            renderProducts();
+        }, error => {
+            console.error("Firebase read failed: ", error);
+            isDataLoaded = true; // Stop skeleton even if error
             renderProducts();
         });
 
         db.ref('categories').on('value', snap => {
             const data = snap.val();
             loadedCats = data ? Object.values(data) : [];
-            localStorage.setItem('cachedCats', JSON.stringify(loadedCats)); // Cache categories
+            localStorage.setItem('cachedCats', JSON.stringify(loadedCats));
             renderCategories(loadedCats);
         });
 
@@ -498,6 +520,7 @@
         function renderProducts() {
             const container = document.getElementById('products-container');
             
+            // Only show skeleton if explicitly waiting for Firebase AND cache is empty
             if (!isDataLoaded && products.length === 0) {
                 renderSkeleton();
                 return;
@@ -508,7 +531,7 @@
             let filtered = activeCategory === 'all' ? products : products.filter(p => p.category === activeCategory);
 
             if(searchQuery) {
-                filtered = filtered.filter(p => p.name.toLowerCase().includes(searchQuery));
+                filtered = filtered.filter(p => p.name && p.name.toLowerCase().includes(searchQuery));
             }
 
             filtered.forEach(p => {
@@ -551,8 +574,9 @@
                 container.appendChild(div);
             });
 
-            if(filtered.length === 0 && products.length > 0) {
-                container.innerHTML = '<p style="text-align:center; width:100%; grid-column:1/-1; color:var(--text-sec); padding:20px;">No products found</p>';
+            // Show empty state message if no products match
+            if(filtered.length === 0) {
+                container.innerHTML = `<p style="text-align:center; width:100%; grid-column:1/-1; color:var(--text-sec); padding:20px;">${dictionary[currentLang].empty_state}</p>`;
             }
         }
 
@@ -576,7 +600,7 @@
         }
 
         function updateGlobalState() {
-            localStorage.setItem('cachedCart', JSON.stringify(cart)); // Cache cart
+            localStorage.setItem('cachedCart', JSON.stringify(cart));
             renderCart();
             updateCartUI();
             renderProducts();
