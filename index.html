@@ -4,6 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Continental Store</title>
+    
+    <link rel="preconnect" href="https://pharmacy-cb0a0-default-rtdb.firebaseio.com">
+    <link rel="preconnect" href="https://images.unsplash.com">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    
     <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;700;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
@@ -332,28 +337,17 @@
         </div>
     </div>
 
-    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
-
     <script>
-        const firebaseConfig = {
-            apiKey: 'AIzaSyAmxH-a49DVhc97_avIVlAUsXyT6saQ8Js',
-            authDomain: 'pharmacy-cb0a0.firebaseapp.com',
-            databaseURL: 'https://pharmacy-cb0a0-default-rtdb.firebaseio.com',
-            projectId: 'pharmacy-cb0a0',
-            storageBucket: 'pharmacy-cb0a0.firebasestorage.app',
-            messagingSenderId: '419103908170',
-            appId: '1:419103908170:web:474e895ef7f837a50421b3',
-            measurementId: 'G-GQPL668775'
-        };
-        firebase.initializeApp(firebaseConfig);
-        const db = firebase.database();
-
-        // Load Cache initially - with safety check
+        // المتغيرات والقواميس
         let products = [];
         let loadedCats = [];
         let cart = [];
-        
+        let isDataLoaded = false;
+        let currentLang = localStorage.getItem('lang') || 'en';
+        let activeCategory = 'all';
+        let searchQuery = ''; 
+
+        // تحميل فوري من الذاكرة (الكاش) قبل أي شيء آخر
         try { products = JSON.parse(localStorage.getItem('cachedProducts')) || []; } catch(e){}
         try { loadedCats = JSON.parse(localStorage.getItem('cachedCats')) || []; } catch(e){}
         try { cart = JSON.parse(localStorage.getItem('cachedCart')) || []; } catch(e){}
@@ -361,12 +355,6 @@
         if(!Array.isArray(products)) products = [];
         if(!Array.isArray(loadedCats)) loadedCats = [];
 
-        let isDataLoaded = false;
-        let currentLang = localStorage.getItem('lang') || 'en';
-        let activeCategory = 'all';
-        let searchQuery = ''; 
-
-        // Dictionary updated with empty_state translations
         const dictionary = {
             ar: { app_title: "Continental", cart_title: "سلة المشتريات", add_cart: "أضف", added: "تمت", confirm_order: "تأكيد الطلب", processing: "جاري الطلب...", room_ph: "رقم الغرفة", name_ph: "اسم العميل", empty_cart: "السلة فارغة", all: "الكل", success: "تم بنجاح", search_ph: "بحث عن منتج...", payment_info: "يمكن دفع حساب الفاتورة بالفيزا أو كاش نقداً بالمحل \"GEF المكملات الغذائية\" المتواجد بداخل الفندق بجوار حمام السباحة", contact_whatsapp: "للتواصل واتساب", empty_state: "لا توجد منتجات متاحة" },
             en: { app_title: "Continental", cart_title: "My Cart", add_cart: "Add", added: "Added", confirm_order: "Confirm Order", processing: "Processing...", room_ph: "Room Number", name_ph: "Client Name", empty_cart: "Cart is empty", all: "All", success: "Success", search_ph: "Search products...", payment_info: "The bill can be paid by Visa or cash at the \"GEF Nutritional Supplements\" shop located inside the hotel next to the swimming pool.", contact_whatsapp: "Contact on WhatsApp", empty_state: "No products found" },
@@ -377,15 +365,8 @@
             es: { app_title: "Continental", cart_title: "Carrito", add_cart: "Añadir", added: "Añadido", confirm_order: "Confirmar", processing: "Procesando...", room_ph: "Número de habitación", name_ph: "Nombre del cliente", empty_cart: "Vacío", all: "Todos", success: "Éxito", search_ph: "Buscar productos...", payment_info: "La factura se puede pagar con Visa o en efectivo en la tienda \"GEF Nutritional Supplements\" ubicada dentro del hotel junto a la piscina.", contact_whatsapp: "Contactar por WhatsApp", empty_state: "No se encontraron productos" }
         };
 
-        function toggleTheme() {
-            document.body.classList.toggle('dark-mode');
-            const isDark = document.body.classList.contains('dark-mode');
-            const icon = document.getElementById('theme-icon');
-            icon.className = isDark ? 'fa-solid fa-sun' : 'fa-solid fa-moon';
-            localStorage.setItem('theme', isDark ? 'dark' : 'light');
-        }
-
-        window.addEventListener('load', () => {
+        // تنفيذ الكود فورا عند قراءة الـ HTML (سريع جدا جدا)
+        document.addEventListener('DOMContentLoaded', () => {
             if(localStorage.getItem('theme') === 'dark') {
                 document.body.classList.add('dark-mode');
                 document.getElementById('theme-icon').className = 'fa-solid fa-sun';
@@ -395,7 +376,7 @@
             const names = {en:'English', ar:'عربي', ru:'Русский', uk:'Українська', de:'Deutsch', fr:'Français', es:'Español'};
             setLang(currentLang, `https://flagcdn.com/w40/${flags[currentLang]}`, names[currentLang], true);
 
-            // Show skeleton ONLY if cache is completely empty
+            // عرض الكاش فوراً
             if(products.length > 0) {
                 renderProducts();
             } else {
@@ -405,14 +386,22 @@
             if(loadedCats.length > 0) renderCategories(loadedCats);
             updateCartUI();
 
-            // Safety Timeout: if Firebase takes more than 4 seconds to load (or is blocked), kill skeleton
+            // إيقاف الانيميشن لو مفيش نت أو الفايربيز اتأخر
             setTimeout(() => {
                 if (!isDataLoaded) {
-                    isDataLoaded = true; // force data state
-                    renderProducts(); // will show 'no products' if still empty
+                    isDataLoaded = true; 
+                    renderProducts(); 
                 }
-            }, 4000);
+            }, 3000);
         });
+
+        function toggleTheme() {
+            document.body.classList.toggle('dark-mode');
+            const isDark = document.body.classList.contains('dark-mode');
+            const icon = document.getElementById('theme-icon');
+            icon.className = isDark ? 'fa-solid fa-sun' : 'fa-solid fa-moon';
+            localStorage.setItem('theme', isDark ? 'dark' : 'light');
+        }
 
         function showSuccess(msg) {
             const overlay = document.getElementById('success-overlay');
@@ -459,26 +448,6 @@
             }
         }
 
-        // Firebase Listeners - Added error callbacks to prevent infinite loading
-        db.ref('products').on('value', snap => {
-            isDataLoaded = true;
-            const data = snap.val();
-            products = data ? Object.keys(data).map(k => ({id:k, ...data[k]})) : [];
-            localStorage.setItem('cachedProducts', JSON.stringify(products)); 
-            renderProducts();
-        }, error => {
-            console.error("Firebase read failed: ", error);
-            isDataLoaded = true; // Stop skeleton even if error
-            renderProducts();
-        });
-
-        db.ref('categories').on('value', snap => {
-            const data = snap.val();
-            loadedCats = data ? Object.values(data) : [];
-            localStorage.setItem('cachedCats', JSON.stringify(loadedCats));
-            renderCategories(loadedCats);
-        });
-
         function renderCategories(cats = loadedCats) {
             const container = document.getElementById('categories-container');
             if(!cats.length) return; 
@@ -490,101 +459,48 @@
             container.innerHTML = html;
         }
 
-        function filter(cat) {
-            activeCategory = cat;
-            renderCategories();
-            renderProducts();
-        }
-
-        function handleSearch(val) {
-            searchQuery = val.toLowerCase();
-            renderProducts();
-        }
+        function filter(cat) { activeCategory = cat; renderCategories(); renderProducts(); }
+        function handleSearch(val) { searchQuery = val.toLowerCase(); renderProducts(); }
 
         function renderSkeleton() {
             const container = document.getElementById('products-container');
             container.innerHTML = '';
             for(let i=0; i<8; i++) {
-                container.innerHTML += `
-                    <div class="product-card">
-                        <div class="skeleton skeleton-img"></div>
-                        <div class="skeleton skeleton-title"></div>
-                        <div class="skeleton skeleton-desc"></div>
-                        <div class="skeleton skeleton-price"></div>
-                        <div class="skeleton skeleton-btn"></div>
-                    </div>
-                `;
+                container.innerHTML += `<div class="product-card"><div class="skeleton skeleton-img"></div><div class="skeleton skeleton-title"></div><div class="skeleton skeleton-desc"></div><div class="skeleton skeleton-price"></div><div class="skeleton skeleton-btn"></div></div>`;
             }
         }
 
         function renderProducts() {
             const container = document.getElementById('products-container');
             
-            // Only show skeleton if explicitly waiting for Firebase AND cache is empty
             if (!isDataLoaded && products.length === 0) {
-                renderSkeleton();
-                return;
+                renderSkeleton(); return;
             }
 
             container.innerHTML = '';
-            
             let filtered = activeCategory === 'all' ? products : products.filter(p => p.category === activeCategory);
-
-            if(searchQuery) {
-                filtered = filtered.filter(p => p.name && p.name.toLowerCase().includes(searchQuery));
-            }
+            if(searchQuery) filtered = filtered.filter(p => p.name && p.name.toLowerCase().includes(searchQuery));
 
             filtered.forEach(p => {
                 const div = document.createElement('div');
                 div.className = 'product-card';
-                
                 const inCartItem = cart.find(item => item.id === p.id);
                 
-                let actionHTML = '';
-                if(inCartItem) {
-                    actionHTML = `
-                        <div class="card-actions">
-                            <div class="card-qty-controls">
-                                <button class="c-qty-btn" onclick="updateQty('${p.id}', -1)">-</button>
-                                <span class="c-qty-val">${inCartItem.qty}</span>
-                                <button class="c-qty-btn" onclick="updateQty('${p.id}', 1)">+</button>
-                            </div>
-                        </div>
-                    `;
-                } else {
-                    actionHTML = `
-                        <div class="card-actions">
-                            <button class="add-btn" onclick="addToCart('${p.id}')">
-                                <i class="fa-solid fa-cart-plus"></i> ${dictionary[currentLang].add_cart}
-                            </button>
-                        </div>
-                    `;
-                }
+                let actionHTML = inCartItem ? 
+                    `<div class="card-actions"><div class="card-qty-controls"><button class="c-qty-btn" onclick="updateQty('${p.id}', -1)">-</button><span class="c-qty-val">${inCartItem.qty}</span><button class="c-qty-btn" onclick="updateQty('${p.id}', 1)">+</button></div></div>` : 
+                    `<div class="card-actions"><button class="add-btn" onclick="addToCart('${p.id}')"><i class="fa-solid fa-cart-plus"></i> ${dictionary[currentLang].add_cart}</button></div>`;
 
-                div.innerHTML = `
-                    <img src="${p.image}" class="product-img" loading="lazy" alt="${p.name}">
-                    <h3>${p.name}</h3>
-                    <div class="product-desc">${p.description || ''}</div>
-                    <div style="font-weight:bold; color:var(--primary); margin-bottom:5px; font-size:1.1rem;">
-                        ${p.price || ''} <span style="font-size:0.85rem">${p.currency || ''}</span>
-                    </div>
-                    <div class="cat-tag">${p.category}</div>
-                    ${actionHTML}
-                `;
+                div.innerHTML = `<img src="${p.image}" class="product-img" loading="lazy" alt="${p.name}"><h3>${p.name}</h3><div class="product-desc">${p.description || ''}</div><div style="font-weight:bold; color:var(--primary); margin-bottom:5px; font-size:1.1rem;">${p.price || ''} <span style="font-size:0.85rem">${p.currency || ''}</span></div><div class="cat-tag">${p.category}</div>${actionHTML}`;
                 container.appendChild(div);
             });
 
-            // Show empty state message if no products match
-            if(filtered.length === 0) {
-                container.innerHTML = `<p style="text-align:center; width:100%; grid-column:1/-1; color:var(--text-sec); padding:20px;">${dictionary[currentLang].empty_state}</p>`;
-            }
+            if(filtered.length === 0) container.innerHTML = `<p style="text-align:center; width:100%; grid-column:1/-1; color:var(--text-sec); padding:20px;">${dictionary[currentLang].empty_state}</p>`;
         }
 
         function addToCart(id) {
             const p = products.find(x => x.id === id);
             const exists = cart.find(x => x.id === id);
-            if(exists) exists.qty++;
-            else cart.push({...p, qty: 1});
+            if(exists) exists.qty++; else cart.push({...p, qty: 1});
             updateGlobalState();
         }
 
@@ -592,18 +508,14 @@
             const index = cart.findIndex(x => x.id === id);
             if(index !== -1) {
                 cart[index].qty += change;
-                if(cart[index].qty <= 0) {
-                    cart.splice(index, 1);
-                }
+                if(cart[index].qty <= 0) cart.splice(index, 1);
             }
             updateGlobalState();
         }
 
         function updateGlobalState() {
             localStorage.setItem('cachedCart', JSON.stringify(cart));
-            renderCart();
-            updateCartUI();
-            renderProducts();
+            renderCart(); updateCartUI(); renderProducts();
         }
 
         function updateCartUI() {
@@ -622,79 +534,96 @@
             const div = document.getElementById('cart-items');
             div.innerHTML = '';
             if(!cart.length) {
-                div.innerHTML = `<p style="text-align:center; color:var(--text-sec); margin-top:50px">${dictionary[currentLang].empty_cart}</p>`;
-                return;
+                div.innerHTML = `<p style="text-align:center; color:var(--text-sec); margin-top:50px">${dictionary[currentLang].empty_cart}</p>`; return;
             }
-            cart.forEach((item, idx) => {
-                div.innerHTML += `
-                    <div class="cart-item-row">
-                        <img src="${item.image}" class="cart-item-img" loading="lazy">
-                        <div style="flex:1">
-                            <div style="font-weight:bold; color:var(--text-main); font-size:0.95rem;">${item.name}</div>
-                            <div style="color:var(--primary); font-weight:bold; font-size:0.85rem; margin-top:2px;">
-                                ${item.price || ''} ${item.currency || ''}
-                            </div>
-                            <div class="qty-controls" style="display:flex; align-items:center; gap:10px; margin-top:5px; background:var(--input-bg); border:1px solid var(--border-color); padding:2px 8px; border-radius:15px; width:fit-content;">
-                                <button onclick="updateQty('${item.id}', -1)" style="border:none; background:none; color:var(--text-main); font-weight:bold; cursor:pointer;">-</button>
-                                <span style="font-weight:bold; font-size:0.9rem;">${item.qty}</span>
-                                <button onclick="updateQty('${item.id}', 1)" style="border:none; background:none; color:var(--text-main); font-weight:bold; cursor:pointer;">+</button>
-                            </div>
-                        </div>
-                    </div>
-                `;
+            cart.forEach(item => {
+                div.innerHTML += `<div class="cart-item-row"><img src="${item.image}" class="cart-item-img" loading="lazy"><div style="flex:1"><div style="font-weight:bold; color:var(--text-main); font-size:0.95rem;">${item.name}</div><div style="color:var(--primary); font-weight:bold; font-size:0.85rem; margin-top:2px;">${item.price || ''} ${item.currency || ''}</div><div class="qty-controls" style="display:flex; align-items:center; gap:10px; margin-top:5px; background:var(--input-bg); border:1px solid var(--border-color); padding:2px 8px; border-radius:15px; width:fit-content;"><button onclick="updateQty('${item.id}', -1)" style="border:none; background:none; color:var(--text-main); font-weight:bold; cursor:pointer;">-</button><span style="font-weight:bold; font-size:0.9rem;">${item.qty}</span><button onclick="updateQty('${item.id}', 1)" style="border:none; background:none; color:var(--text-main); font-weight:bold; cursor:pointer;">+</button></div></div></div>`;
             });
         }
-
-        function placeOrder() {
-            const name = document.getElementById('client-name').value;
-            const room = document.getElementById('room-num').value;
-            const btn = document.getElementById('confirm-btn');
-            const btnText = document.getElementById('btn-text');
-            const btnIcon = document.getElementById('btn-icon');
-            
-            if(!name || !room || !cart.length) {
-                alert('Please enter Name, Room Number and ensure Cart is not empty');
-                return;
-            }
-
-            btn.disabled = true; 
-            const originalText = btnText.innerText;
-            const originalIconClass = btnIcon.className;
-            
-            btnText.innerText = dictionary[currentLang].processing;
-            btnIcon.className = "fa-solid fa-spinner fa-spin"; 
-            
-            const order = {
-                items: cart,
-                clientName: name,
-                room: room,
-                status: 'pending',
-                timestamp: Date.now()
-            };
-
-            db.ref('orders/active').push(order)
-                .then(() => {
-                    showSuccess(dictionary[currentLang].success);
-                    cart = [];
-                    updateGlobalState();
-                    toggleCart();
-                    document.getElementById('room-num').value = '';
-                    document.getElementById('client-name').value = '';
-                })
-                .catch(err => {
-                    alert("Error: " + err.message);
-                })
-                .finally(() => {
-                    btn.disabled = false;
-                    btnText.innerText = originalText;
-                    btnIcon.className = originalIconClass;
-                });
-        }
-
+        
         window.onclick = function(e) {
             if(!e.target.closest('.lang-dropdown')) {
                 document.getElementById('lang-menu').classList.remove('show');
             }
+        }
+    </script>
+
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
+
+    <script>
+        // إعداد الفايربيز وجلب الداتا في الخلفية 
+        function initFirebase() {
+            const firebaseConfig = {
+                apiKey: 'AIzaSyAmxH-a49DVhc97_avIVlAUsXyT6saQ8Js',
+                authDomain: 'pharmacy-cb0a0.firebaseapp.com',
+                databaseURL: 'https://pharmacy-cb0a0-default-rtdb.firebaseio.com',
+                projectId: 'pharmacy-cb0a0',
+                storageBucket: 'pharmacy-cb0a0.firebasestorage.app',
+                messagingSenderId: '419103908170',
+                appId: '1:419103908170:web:474e895ef7f837a50421b3',
+                measurementId: 'G-GQPL668775'
+            };
+            firebase.initializeApp(firebaseConfig);
+            const db = firebase.database();
+
+            db.ref('products').on('value', snap => {
+                isDataLoaded = true;
+                const data = snap.val();
+                products = data ? Object.keys(data).map(k => ({id:k, ...data[k]})) : [];
+                localStorage.setItem('cachedProducts', JSON.stringify(products)); 
+                renderProducts();
+            }, error => {
+                console.error("Firebase Error:", error);
+                isDataLoaded = true; renderProducts();
+            });
+
+            db.ref('categories').on('value', snap => {
+                const data = snap.val();
+                loadedCats = data ? Object.values(data) : [];
+                localStorage.setItem('cachedCats', JSON.stringify(loadedCats));
+                renderCategories(loadedCats);
+            });
+
+            window.placeOrder = function() {
+                const name = document.getElementById('client-name').value;
+                const room = document.getElementById('room-num').value;
+                const btn = document.getElementById('confirm-btn');
+                const btnText = document.getElementById('btn-text');
+                const btnIcon = document.getElementById('btn-icon');
+                
+                if(!name || !room || !cart.length) {
+                    alert('Please enter Name, Room Number and ensure Cart is not empty'); return;
+                }
+
+                btn.disabled = true; 
+                const originalText = btnText.innerText;
+                const originalIconClass = btnIcon.className;
+                
+                btnText.innerText = dictionary[currentLang].processing;
+                btnIcon.className = "fa-solid fa-spinner fa-spin"; 
+                
+                const order = { items: cart, clientName: name, room: room, status: 'pending', timestamp: Date.now() };
+
+                db.ref('orders/active').push(order).then(() => {
+                    showSuccess(dictionary[currentLang].success);
+                    cart = []; updateGlobalState(); toggleCart();
+                    document.getElementById('room-num').value = '';
+                    document.getElementById('client-name').value = '';
+                }).catch(err => {
+                    alert("Error: " + err.message);
+                }).finally(() => {
+                    btn.disabled = false; btnText.innerText = originalText; btnIcon.className = originalIconClass;
+                });
+            }
+        }
+
+        // تشغيل الفايربيز بمجرد ما المتصفح يقرأ الكود
+        if(typeof firebase !== 'undefined') {
+            initFirebase();
+        } else {
+            // في حالة بطء تحميل مكتبة الفايربيز، ننتظرها
+            window.addEventListener('load', initFirebase);
         }
     </script>
 </body>
